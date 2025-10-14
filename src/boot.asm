@@ -38,7 +38,6 @@ read_payload:
     cmp ch, 80 ; max cyl
     jae err
 
-
 lgdt [gdt_descriptor]
 cld
 
@@ -64,6 +63,11 @@ call kernel_entry
 [GLOBAL loop]
 loop:
     jmp loop
+
+[GLOBAL cli]
+cli:
+    cli
+    ret
 
 [BITS 16]
 cont:
