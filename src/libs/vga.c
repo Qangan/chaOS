@@ -7,16 +7,16 @@
 #define VGA_HEIGHT 25
 #define VGA_BUF ((u16 *)0xB8000)
 
-static u8 cx = 0;
-static u8 cy = 0;
+static u8 cur_x = 0;
+static u8 cur_y = 0;
 
 static color cbg = black;
 static color cfg = white;
 
 void clear_screen() {
   memzero(VGA_BUF, VGA_WIDTH * VGA_HEIGHT * 2);
-  cx = 0;
-  cy = 0;
+  cur_x = 0;
+  cur_y = 0;
 }
 
 void put_char(char c, u32 x, u32 y) {
@@ -29,8 +29,8 @@ void scroll_down() {
   for (u32 x = 0; x < VGA_WIDTH; x++) {
     put_char(0, VGA_WIDTH - 1, x);
   }
-  cy = VGA_WIDTH - 1;
-  cx = 0;
+  cur_y = VGA_WIDTH - 1;
+  cur_x = 0;
 }
 
 void set_bg(color bg) { cbg = bg; }
@@ -47,22 +47,22 @@ void change_bg_color(color new_bg) {
 
 static void print_char_internal(char c) {
   if (c == '\n') {
-    cx = 0;
-    cy++;
+    cur_x = 0;
+    cur_y++;
   } else if (c == '\r') {
-    cx = 0;
+    cur_x = 0;
   } else {
-    put_char(c, cx, cy);
-    cx++;
-    if (cx >= VGA_WIDTH) {
-      cx = 0;
-      cy++;
+    put_char(c, cur_x, cur_y);
+    cur_x++;
+    if (cur_x >= VGA_WIDTH) {
+      cur_x = 0;
+      cur_y++;
     }
   }
 
-  if (cy >= VGA_HEIGHT) {
+  if (cur_y >= VGA_HEIGHT) {
     scroll_down();
-    cy = VGA_HEIGHT - 1;
+    cur_y = VGA_HEIGHT - 1;
   }
 }
 
