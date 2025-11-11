@@ -4,24 +4,28 @@
 # =============================================================================
 # Tasks
 
-SRCLIBS := $(wildcard src/libs/*.c)
-OBJLIBS := $(patsubst src/libs/%.c,.tmp/%.o,$(filter-out src/libs/kpanic.c,$(SRCLIBS)))
-KPANIC := .tmp/kpanic.o
+CFLAGS := -std=c23 -m32 -O2 -Wimplicit-function-declaration -masm=intel -ffreestanding -no-pie -fno-pie -mno-sse -fno-stack-protector
+LIBS := $(wildcard ./src/libs/*.c) 
+KERNEL := $(wildcard ./src/*.c)
+
+OBJLIBS := $(patsubst ./src/libs/%.c, .tmp/%.o, $(LIBS))
+OBJKERNEL := $(patsubst ./src/%.c, .tmp/%.o, $(KERNEL))
+
+ifdef ASSERT
+    CFLAGS += -D DEBUG
+endif
 
 all: clean build test
 
-$(KPANIC): src/libs/kpanic.c | .tmp
-	gcc -std=c99 -m32 -O2 -ffreestanding -no-pie -fno-pie -mno-sse -fno-stack-protector -masm=intel -Iinclude -c $< -o $@
+.tmp/%.o: ./src/libs/%.c | .tmp
+	gcc $(CFLAGS) -Iinclude -c $< -o $@
 
-OBJLIBS += $(KPANIC)
+.tmp/%.o: ./src/%.c | .tmp
+	gcc $(CFLAGS) -Iinclude -c $< -o $@
 
-.tmp/%.o: src/libs/%.c | .tmp
-	gcc -std=c99 -m32 -O2 -Wimplicit-function-declaration -ffreestanding -no-pie -fno-pie -mno-sse -fno-stack-protector -Iinclude -c $< -o $@
-
-boot.img: $(OBJLIBS)
-	gcc -std=c99 -m32 -O2 -masm=intel -ffreestanding -no-pie -fno-pie -mno-sse -fno-stack-protector -c src/kernel.c -o .tmp/kernel.o
+boot.img: $(OBJLIBS) $(OBJKERNEL)
 	nasm -felf src/boot.asm -o .tmp/boot.o -dN=100000
-	ld -m elf_i386 .tmp/boot.o .tmp/kernel.o $(OBJLIBS) -T link.ld -o .tmp/os.elf
+	ld -m elf_i386 .tmp/boot.o $(OBJKERNEL) $(OBJLIBS) -T link.ld -o .tmp/os.elf
 	objcopy -I elf32-i386 -O binary .tmp/os.elf .tmp/os.bin
 	dd if=/dev/zero of=boot.img bs=1024 count=1440
 	dd if=.tmp/os.bin of=boot.img conv=notrunc
@@ -36,7 +40,7 @@ clean:
 test: build
 	qemu-system-i386 -D ./log.txt -cpu pentium2 -m 4g -fda boot.img -monitor stdio -device VGA
 
-debug: build
+debug: clean build
 	qemu-system-i386 -D ./log.txt -no-reboot -cpu pentium2 -m 4g -fda boot.img -monitor stdio -device VGA -s -S &
 	gdb
 

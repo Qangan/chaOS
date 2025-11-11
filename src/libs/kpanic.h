@@ -10,6 +10,14 @@ void kernel_panic(const char* fmt, ...);
 
 #define assert(cond) \
     do { \
+    } while (0)
+#define assertEquals(l, r) \
+    do { \
+    } while (0)
+
+#ifdef DEBUG
+#define assert(cond) \
+    do { \
         if (!(cond)) { \
             kernel_panic("Assertion failed: %s at %s:%d\n", \
                          #cond, __FILE__, __LINE__); \
@@ -22,4 +30,6 @@ void kernel_panic(const char* fmt, ...);
                 (l), (r), __FILE__, __LINE__); \
         } \
     } while (0)
+#endif
+
 #endif
