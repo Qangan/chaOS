@@ -40,7 +40,6 @@ void kernel_entry() {
     pic_init(1);
     ps2_init();
     // pit_init(0, 1, 1, 3, 0, 100);
-    setup_handler(TIMER, TVECTOR, timer_handler);
     setup_handler(KBOARD, KVECTOR, keyboard_handler);
     // setup_handler(KBOARD, KVECTOR, kboard_handler);
     // setup_handler(TIMER, TVECTOR, timer_handler);
