@@ -64,6 +64,18 @@ call kernel_entry
 loop:
     jmp loop
 
+[GLOBAL outb]
+outb:
+    mov dx, [esp+4] 
+    mov al, [esp+8] 
+    out dx, al
+    ret
+
+[GLOBAL inb]
+inb:
+    mov dx, [esp+4]
+    in al, dx
+    ret
 
 [GLOBAL cli]
 cli:
@@ -106,6 +118,7 @@ collect_context:
     pop fs
     pop es
     pop ds
+    add esp, 8 
     iretd
 
 

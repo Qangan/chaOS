@@ -1,9 +1,80 @@
+#include "interrupts.h"
 #include "kpanic.h"
 #include "memory.h"
+#include "vga.h"
 
-#define IDT_ENTRIES 256
+#define TYPE_ATTR(dpl, gt)                                                     \
+    (u8)(10000000 | (((dpl) & 0b11) << 5) | ((gt) & 0b1111))
 
-#define TYPE_ATTR(dpl, gt) (u8)(10000000 | (((dpl) & 0b11) << 5) | ((gt) & 0b1111))
+void io_wait() { outb(0x80, 0); }
+
+void send_eoi(u8 irq) {
+    if (irq >= 8) {
+        outb(SLAVE_COMMAND, PIC_EOI);
+    }
+    outb(MASTER_COMMAND, PIC_EOI);
+}
+
+u8 get_master_mask() { return inb(MASTER_DATA); }
+
+u8 get_slave_mask() { return inb(SLAVE_DATA); }
+
+void disable() {
+    outb(MASTER_DATA, 0xff);
+    outb(SLAVE_DATA, 0xff);
+}
+
+void pic_init(u8 aeoi) {
+    outb(MASTER_COMMAND, 0b00010001);
+    io_wait();
+    outb(SLAVE_COMMAND, 0b00010001);
+    io_wait();
+
+    outb(MASTER_DATA, 0x20);
+    outb(SLAVE_DATA, 0x28);
+
+    outb(MASTER_DATA, 0b00000100);
+    io_wait();
+    outb(SLAVE_DATA, 2);
+    io_wait();
+
+    u8 icw4 = 0b00000001 | (aeoi << 1);
+
+    outb(MASTER_DATA, icw4);
+    io_wait();
+    outb(SLAVE_DATA, icw4);
+    io_wait();
+
+    disable();
+}
+
+void set_mask(u8 irq) {
+    u16 port;
+    u8 value;
+
+    if (irq < 8) {
+        port = MASTER_DATA;
+    } else {
+        port = SLAVE_DATA;
+        irq -= 8;
+    }
+    value = inb(port) | (1 << irq);
+    outb(port, value);
+}
+
+void clear_mask(u8 irq) {
+    u16 port;
+    u8 value;
+
+    if (irq < 8) {
+        port = MASTER_DATA;
+    } else {
+        port = SLAVE_DATA;
+        irq -= 8;
+    }
+    value = inb(port) & ~(1 << irq);
+    outb(port, value);
+}
 
 void collect_context();
 
@@ -20,6 +91,8 @@ typedef struct context {
     u32 eflags;
 } context;
 
+void (*handlers[256])(context *ctx) = {};
+
 #pragma pack(push, 1)
 typedef struct {
     u16 limit;
@@ -29,51 +102,52 @@ typedef struct {
 typedef struct idt_entry {
     u16 offset_low;
     u16 selector;
-    u8  zero;
-    u8  type_attr;
+    u8 zero;
+    u8 type_attr;
     u16 offset_high;
 } idt_entry;
 
-static const u8 error_code_havers[] = {0x8, 0xA, 0xB, 0xC, 0xD, 0xE, 0x11, 0x15};
+static const u8 error_code_havers[] = {0x8, 0xA, 0xB,  0xC,
+                                       0xD, 0xE, 0x11, 0x15};
 
 static u32 has_error_code(u8 vector) {
-    for (u32 i = 0;i < 8; i++) {
+    for (u32 i = 0; i < 8; i++) {
         if (error_code_havers[i] == vector) {
             return 1;
         }
     }
     return 0;
 }
-static void* gen_tramps() {
-    u8* tramps = (u8*)immortal_alloc(IDT_ENTRIES * 8, 16);
-    for (u32 i = 0;i < IDT_ENTRIES; i++) {
-        u8* tramp = tramps + i * 8;
+static void *gen_tramps() {
+    u8 *tramps = (u8 *)immortal_alloc(IDT_ENTRIES * 8, 16);
+    for (u32 i = 0; i < IDT_ENTRIES; i++) {
+        u8 *tramp = tramps + i * 8;
         u32 instructions = 0xE9006A00;
-        instructions |= ((has_error_code(i) ? 0x90 : 0x50)) | (00 << 8)  | (i << 16) | (00 << 24); // nop | push eax       
-        s32 offset = (s32)((u8*)collect_context - (tramp + 8));
+        instructions |= ((has_error_code(i) ? 0x90 : 0x50)) | (00 << 8) |
+                        (i << 16) | (00 << 24); // nop | push eax
+        s32 offset = (s32)((u8 *)collect_context - (tramp + 8));
         memmove(tramp, &instructions, 4);
         memmove(tramp + 4, &offset, 4);
     }
     return tramps;
-
 }
 
-static void* gen_idt(void* tramps){
-    idt_entry* idt = immortal_alloc(IDT_ENTRIES * 8, 16);
-    for(u32 i = 1;i < IDT_ENTRIES; i++){
-        void* tramp = (u8*)tramps + 8 * i;
+static void *gen_idt(void *tramps, u16 gate_type) {
+    idt_entry *idt = immortal_alloc(IDT_ENTRIES * 8, 16);
+    for (u32 i = 0; i < IDT_ENTRIES; i++) {
+        void *tramp = (u8 *)tramps + 8 * i;
         idt[i].offset_low = (u32)tramp & 0xFFFF;
         idt[i].offset_high = ((u32)tramp >> 16) & 0xFFFF;
         idt[i].selector = 0x8;
         idt[i].zero = 0;
-        idt[i].type_attr = TYPE_ATTR(0, 0b1110);
+        idt[i].type_attr = TYPE_ATTR(0, gate_type);
     }
     return idt;
 }
 
-void init(){
+void init(u16 gate_type) {
     assertEquals(sizeof(idt_entry), 8);
-    void* idt = gen_idt(gen_tramps());
+    void *idt = gen_idt(gen_tramps(), gate_type);
     assertEquals(sizeof(context), 68);
     idtr_t idtr;
     idtr.limit = (IDT_ENTRIES * sizeof(idt_entry)) - 1;
@@ -81,18 +155,23 @@ void init(){
     lidt(&idtr);
 }
 
-void universal_handler(context* ctx) {
-    kernel_panic(
-        "Interrupt: %x at %x:%x\n" 
-        "Error Code: %x\n"
-        "EAX: %x  EBX: %x  ECX: %x  EDX: %x\n"
-        "ESI: %x  EDI: %x  EBP: %x  ESP: %x\n"
-        "DS: %x  ES: %x  FS: %x  GS: %x\n"
-        "EFLAGS: %b\n",
-        ctx->vector, ctx->cs, ctx->eip,
-        ctx->error_code,
-        ctx->eax, ctx->ebx, ctx->ecx, ctx->edx,
-        ctx->esi, ctx->edi, ctx->ebp, ctx->esp,
-        ctx->ds, ctx->es, ctx->fs, ctx->gs,
-        ctx->eflags
-    );}
+void setup_handler(u8 irq, u16 vector, void (*handler)(context *ctx)) {
+    clear_mask(irq);
+    handlers[vector] = handler;
+}
+
+void universal_handler(context *ctx) {
+    if (handlers[ctx->vector]) {
+        handlers[ctx->vector](ctx);
+        return;
+    }
+    kernel_panic("Interrupt: %x at %x:%x\n"
+                 "Error Code: %x\n"
+                 "EAX: %x  EBX: %x  ECX: %x  EDX: %x\n"
+                 "ESI: %x  EDI: %x  EBP: %x  ESP: %x\n"
+                 "DS: %x  ES: %x  FS: %x  GS: %x\n"
+                 "EFLAGS: %b\n",
+                 ctx->vector, ctx->cs, ctx->eip, ctx->error_code, ctx->eax,
+                 ctx->ebx, ctx->ecx, ctx->edx, ctx->esi, ctx->edi, ctx->ebp,
+                 ctx->esp, ctx->ds, ctx->es, ctx->fs, ctx->gs, ctx->eflags);
+}
