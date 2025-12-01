@@ -9,4 +9,4 @@
  ▒▒▒▒▒▒  ▒▒▒▒ ▒▒▒▒▒  ▒▒▒▒▒▒▒▒    ▒▒▒▒▒▒▒     ▒▒▒▒▒▒▒▒▒  
 ```                                                        
                                                         
-chaOS - **c**ompletly **h**opeless **a**bsurd **O**perating **S**ystem 
+chaOS - **c**ompletely **h**opeless **a**bsurd **O**perating **S**ystem 

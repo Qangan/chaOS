@@ -1,25 +1,19 @@
 # =============================================================================
 # Variables
 
-# Build tools
-NASM = nasm -f bin 
-
-
 # =============================================================================
 # Tasks
 
 all: clean build test
 
-.tmp/boot.bin: src/boot.asm
-	$(NASM) src/boot.asm -o .tmp/boot.bin -dN=$(N)
 
-.tmp/payload: 
-	dd if=/dev/urandom of=.tmp/payload bs=1 count=$(N)
-
-boot.img: .tmp/boot.bin .tmp/payload
-	dd if=/dev/zero of=boot.img bs=1024 count=1440 
-	dd if=.tmp/boot.bin of=boot.img conv=notrunc
-	dd if=.tmp/payload of=boot.img conv=notrunc seek=1
+boot.img:
+	nasm -felf src/boot.asm -o .tmp/boot.o -dN=3600
+	gcc -std=c99 -m32 -O2 -ffreestanding -no-pie -fno-pie -mno-sse -fno-stack-protector -c src/kernel.c -o .tmp/kernel.o
+	ld -m elf_i386 .tmp/boot.o .tmp/kernel.o -T link.ld -o .tmp/os.elf
+	objcopy -I elf32-i386 -O binary .tmp/os.elf .tmp/os.bin
+	dd if=/dev/zero of=boot.img bs=1024 count=1440
+	dd if=.tmp/os.bin of=boot.img conv=notrunc
 
 build: boot.img
 
@@ -29,10 +23,10 @@ clean:
 	mkdir .tmp
 
 test: build
-	qemu-system-i386 -cpu pentium2 -m 1g -fda boot.img -monitor stdio -device VGA
+	qemu-system-i386 -D ./log.txt -cpu pentium2 -m 4g -fda boot.img -monitor stdio -device VGA
 
 debug: build
-	qemu-system-i386 -cpu pentium2 -m 1g -fda boot.img -monitor stdio -device VGA -s -S &
+	qemu-system-i386 -D ./log.txt -cpu pentium2 -m 4g -fda boot.img -monitor stdio -device VGA -s -S &
 	gdb
 
 .PHONY: all build clean test debug
