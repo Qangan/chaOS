@@ -60,7 +60,7 @@ static void* gen_tramps() {
 
 static void* gen_idt(void* tramps){
     idt_entry* idt = immortal_alloc(IDT_ENTRIES * 8, 16);
-    for(u32 i = 1;i < IDT_ENTRIES; i++){
+    for(u32 i = 0;i < IDT_ENTRIES; i++){
         void* tramp = (u8*)tramps + 8 * i;
         idt[i].offset_low = (u32)tramp & 0xFFFF;
         idt[i].offset_high = ((u32)tramp >> 16) & 0xFFFF;

@@ -16,7 +16,7 @@ void kernel_entry() {
         "mov esi, 0xEEEEEEEE\n"  \
         "mov edi, 0xFFFFFFFF\n"  \
         );
-    //__asm__ volatile("int 0");
+    __asm__ volatile("int 0");
     //__asm__ volatile("int 2");
     //__asm__ volatile("idiv eax");
     sti();
