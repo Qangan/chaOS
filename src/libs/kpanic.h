@@ -1,12 +1,12 @@
 #ifndef PANIC_H
 #define PANIC_H
 
+#include "asm_utils.h"
 #include "types.h"
 #include <stdarg.h>
-#include "asm_utils.h"
 
-void vkernel_panic(const char* fmt, va_list args);
-void kernel_panic(const char* fmt, ...);
+void vkernel_panic(const char *fmt, va_list args);
+void kernel_panic(const char *fmt, ...);
 
 #define assert(cond) \
     do { \
