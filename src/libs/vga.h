@@ -35,8 +35,8 @@ void set_fg(color fg);
 
 void change_bg_color(color new_bg);
 
-void vprintf(const char* fmt, va_list args);
-void printf(const char* fmt, ...);
-void printfln(const char* fmt, ...);
+void vprintf(const char *fmt, va_list args);
+void printf(const char *fmt, ...);
+void printfln(const char *fmt, ...);
 
-#endif 
+#endif
