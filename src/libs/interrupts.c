@@ -3,7 +3,7 @@
 
 #define IDT_ENTRIES 256
 
-#define TYPE_ATTR(dpl, gt) (u8)(10000000 | (((dpl) & 0b11) << 5) | ((gt) & 0b1111))
+#define TYPE_ATTR(dpl, gt) (u8)(0b10000000 | (((dpl) & 0b11) << 5) | ((gt) & 0b1111))
 #define JMP 0xE9
 #define PUSH 0x6A
 #define NOP 0x90
