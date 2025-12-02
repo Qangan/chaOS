@@ -1,6 +1,7 @@
 #include "interrupts.h"
 #include "kpanic.h"
 #include "memory.h"
+#include "vga.h"
 
 #define TYPE_ATTR(dpl, gt)                                                     \
     (u8)(10000000 | (((dpl) & 0b11) << 5) | ((gt) & 0b1111))
