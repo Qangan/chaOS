@@ -8,7 +8,7 @@
 #define VGA_HEIGHT 25
 
 typedef enum {
-    black = 0,
+    black,
     blue,
     green,
     cyan,
