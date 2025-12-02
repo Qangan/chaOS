@@ -75,7 +75,7 @@ static void print_char_internal(char c) {
             cur_y += 1;
         }
     }
-
+  
     if (cur_y >= VGA_HEIGHT) {
         scroll_down();
         cur_y = VGA_HEIGHT - 1;

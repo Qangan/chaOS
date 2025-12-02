@@ -1,4 +1,6 @@
 .tmp
 .jukit
+*.img
+log.txt
 payload.*
-boot.img
+

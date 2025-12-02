@@ -6,6 +6,12 @@
 #define TYPE_ATTR(dpl, gt)                                                     \
     (u8)(10000000 | (((dpl) & 0b11) << 5) | ((gt) & 0b1111))
 
+#define TYPE_ATTR(dpl, gt) (u8)(10000000 | (((dpl) & 0b11) << 5) | ((gt) & 0b1111))
+#define JMP 0xE9
+#define PUSH 0x6A
+#define NOP 0x90
+#define PUSHEAX 0x50
+
 void io_wait() { outb(0x80, 0); }
 
 void send_eoi(u8 irq) {
@@ -118,24 +124,25 @@ static u32 has_error_code(u8 vector) {
     }
     return 0;
 }
-static void *gen_tramps() {
-    u8 *tramps = (u8 *)immortal_alloc(IDT_ENTRIES * 8, 16);
-    for (u32 i = 0; i < IDT_ENTRIES; i++) {
-        u8 *tramp = tramps + i * 8;
-        u32 instructions = 0xE9006A00;
-        instructions |= ((has_error_code(i) ? 0x90 : 0x50)) | (00 << 8) |
-                        (i << 16) | (00 << 24); // nop | push eax
-        s32 offset = (s32)((u8 *)collect_context - (tramp + 8));
-        memmove(tramp, &instructions, 4);
-        memmove(tramp + 4, &offset, 4);
+
+static void* gen_tramps() {
+    u8* tramps = (u8*)immortal_alloc(IDT_ENTRIES * sizeof(idt_entry), 16);
+    for (u32 vector = 0; vector < IDT_ENTRIES; vector++) {
+        u8* tramp = tramps + vector * sizeof(idt_entry);
+        u32 instructions = 00 | (PUSH << 8) | (00 << 16) | (JMP << 24);
+        instructions |= ((has_error_code(vector) ? NOP : PUSHEAX)) | (00 << 8)  | (vector << 16) | (00 << 24);
+        s32 offset = (s32)((u8*)collect_context - (tramp + 8));
+        *(u32*)tramp = instructions;
+        *(u32*)(tramp + 4) = offset;
+        
     }
     return tramps;
 }
 
-static void *gen_idt(void *tramps, u16 gate_type) {
-    idt_entry *idt = immortal_alloc(IDT_ENTRIES * 8, 16);
-    for (u32 i = 0; i < IDT_ENTRIES; i++) {
-        void *tramp = (u8 *)tramps + 8 * i;
+static void* gen_idt(void* tramps){
+    idt_entry* idt = immortal_alloc(IDT_ENTRIES * sizeof(idt_entry), 16);
+    for(u32 i = 0; i < IDT_ENTRIES; i++){
+        void* tramp = (u8*)tramps + sizeof(idt_entry) * i;
         idt[i].offset_low = (u32)tramp & 0xFFFF;
         idt[i].offset_high = ((u32)tramp >> 16) & 0xFFFF;
         idt[i].selector = 0x8;
