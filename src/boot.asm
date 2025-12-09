@@ -64,10 +64,51 @@ call kernel_entry
 loop:
     jmp loop
 
+
 [GLOBAL cli]
 cli:
     cli
     ret
+
+[GLOBAL sti]
+sti:
+    sti
+    ret
+
+[GLOBAL lidt]
+lidt:
+    mov eax, [esp + 4]
+    lidt [eax]
+    ret
+
+[EXTERN universal_handler]
+[GLOBAL collect_context]
+collect_context:
+    push ds
+    push es
+    push fs
+    push gs
+    pusha
+    cld
+    mov eax, DATA
+    mov ds, eax
+    mov es, eax
+    mov fs, eax
+    mov gs, eax
+    mov ebx, esp
+    and esp, -16
+    sub esp, 12 
+    push ebx
+    call universal_handler
+    mov esp, ebx
+    popa
+    pop gs
+    pop fs
+    pop es
+    pop ds
+    add esp, 8
+    iretd
+
 
 [BITS 16]
 cont:
