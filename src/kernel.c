@@ -50,7 +50,7 @@ void kernel_entry() {
     delay();
     sti();
     */
-    //sti();
+    sti();
     // for (;;) {printf("%d ", global++);};
-    //loop();
+    loop();
 }

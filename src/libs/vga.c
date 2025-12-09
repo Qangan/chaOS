@@ -15,7 +15,7 @@ static color cbg = black;
 static color cfg = white;
 
 void clear_screen() {
-    memset(VGA_BUF, VGA_WIDTH * VGA_HEIGHT * 2, 0);
+    memset(VGA_BUF, 0, VGA_WIDTH * VGA_HEIGHT * 2);
     cur_x = 0;
     cur_y = 0;
 }
