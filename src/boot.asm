@@ -97,7 +97,7 @@ collect_context:
     mov gs, eax
     mov ebx, esp
     and esp, -16
-    add esp, 4
+    sub esp, 12 
     push ebx
     call universal_handler
     mov esp, ebx
