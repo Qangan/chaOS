@@ -3,9 +3,6 @@
 #include "memory.h"
 #include "vga.h"
 
-#define TYPE_ATTR(dpl, gt)                                                     \
-    (u8)(10000000 | (((dpl) & 0b11) << 5) | ((gt) & 0b1111))
-
 #define TYPE_ATTR(dpl, gt) (u8)(0b10000000 | (((dpl) & 0b11) << 5) | ((gt) & 0b1111))
 #define JMP 0xE9
 #define PUSH 0x6A
@@ -139,7 +136,7 @@ static void* gen_tramps() {
     return tramps;
 }
 
-static void* gen_idt(void* tramps){
+static void* gen_idt(void* tramps, u16 gate_type){
     idt_entry* idt = immortal_alloc(IDT_ENTRIES * sizeof(idt_entry), 16);
     for(u32 i = 0; i < IDT_ENTRIES; i++){
         void* tramp = (u8*)tramps + sizeof(idt_entry) * i;
