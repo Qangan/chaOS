@@ -47,7 +47,7 @@ clean:
 	mkdir .tmp
 
 test: build
-	qemu-system-i386 -D ./log.txt -cpu pentium2 -m 4g -fda boot.img -monitor stdio -device VGA
+	qemu-system-i386 -D ./log.txt -cpu pentium2 -m 4m -fda boot.img -monitor stdio -device VGA
 
 debug: clean build-debug 
 	qemu-system-i386 -D ./log.txt -no-reboot -cpu pentium2 -m 4g -fda debug.img -monitor stdio -device VGA -s -S &

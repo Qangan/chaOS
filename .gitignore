@@ -2,3 +2,5 @@
 .jukit
 *.img
 log.txt
+payload.*
+

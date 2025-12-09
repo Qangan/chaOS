@@ -1,4 +1,5 @@
 #include "vga.h"
+#include "interrupts.h"
 #include "memory.h"
 #include "types.h"
 #include <stdarg.h>
