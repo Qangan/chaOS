@@ -81,18 +81,6 @@ void clear_mask(u8 irq) {
 
 void collect_context();
 
-typedef struct context {
-    u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;
-    u16 gs __attribute__((aligned(4)));
-    u16 fs __attribute__((aligned((4))));
-    u16 es __attribute__((aligned(4)));
-    u16 ds __attribute__((aligned(4)));
-    u8 vector __attribute__((aligned(4)));
-    u32 error_code;
-    u32 eip;
-    u16 cs __attribute__((aligned(4)));
-    u32 eflags;
-} context;
 
 void (*handlers[256])(context *ctx) = {};
 
@@ -146,6 +134,7 @@ static void* gen_idt(void* tramps, u16 gate_type){
         idt[i].zero = 0;
         idt[i].type_attr = TYPE_ATTR(0, gate_type);
     }
+    idt[0x30].type_attr = TYPE_ATTR(3, gate_type);
     return idt;
 }
 
@@ -164,6 +153,9 @@ void setup_handler(u8 irq, u16 vector, void (*handler)(context *ctx)) {
     handlers[vector] = handler;
 }
 
+void setup_handler_no_irq(u16 vector, void (*handler)(context *ctx)) {
+    handlers[vector] = handler;
+}
 void universal_handler(context *ctx) {
     if (handlers[ctx->vector]) {
         handlers[ctx->vector](ctx);

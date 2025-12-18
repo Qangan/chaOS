@@ -2,6 +2,7 @@
 #include "kpanic.h"
 #include "types.h"
 #include <stddef.h>
+#include "vga.h"
 
 #define IMMORTAL_END 0x80000
 #define KERNEL_SIZE 100000
@@ -23,7 +24,6 @@ void *immortal_alloc(u32 size, u32 align) {
     assert((u32)ptr % align == 0);
 
     current_ptr += size;
-
     return ptr;
 }
 

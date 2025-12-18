@@ -1,3 +1,6 @@
+#ifndef INTERRUPTS_H
+#define INTERRUPTS_H
+
 #include "memory.h"
 #include "kpanic.h"
 #include "asm_utils.h"
@@ -17,8 +20,18 @@
 
 #define IDT_ENTRIES 256
 
-struct context;
-typedef struct context context;
+typedef struct context {
+    u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;
+    u16 gs __attribute__((aligned(4)));
+    u16 fs __attribute__((aligned((4))));
+    u16 es __attribute__((aligned(4)));
+    u16 ds __attribute__((aligned(4)));
+    u8 vector __attribute__((aligned(4)));
+    u32 error_code;
+    u32 eip;
+    u16 cs __attribute__((aligned(4)));
+    u32 eflags;
+} context;
 
 void init(u16 gate_type);
 void io_wait();
@@ -27,4 +40,6 @@ void send_eoi(u8 irq);
 void clear_mask(u8 irq);
 void set_mask(u8 irq);
 void setup_handler(u8 irq, u16 vector, void (*handler)(context* ctx));
-void universal_handler(struct context* ctx);
+void setup_handler_no_irq(u16 vector, void (*handler)(context* ctx));
+void universal_handler(context* ctx);
+#endif

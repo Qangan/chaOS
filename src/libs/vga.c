@@ -126,6 +126,10 @@ void vprintf(const char *fmt, va_list args) {
             }
             case 'd': {
                 s32 num = va_arg(args, s32);
+                if (num == 0) {
+                    printf("GOTCHA!");
+                    loop();
+                }
                 print_signed(num);
                 break;
             }

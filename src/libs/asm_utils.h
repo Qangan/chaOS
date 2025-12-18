@@ -9,5 +9,8 @@ extern void sti();
 extern void loop();
 extern void lidt(void* adr);
 extern void collect();
+extern u32 get_eflags();
+extern void restore_ctx(void* ctx);
+extern u32 get_esp();
 
 #endif

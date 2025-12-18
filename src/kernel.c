@@ -4,20 +4,13 @@
 #include "libs/memory.h"
 #include "libs/pit.h"
 #include "libs/vga.h"
+#include "libs/userspace.h"
 
 extern void loop();
+extern void syscallprint(u32 n);
 
-u32 global = 0;
 
-static void delay() {
-    for (int i = 0; i < 20; i++) {
-        for (int j = 0; j < 50000; j++) {
-            outb(0x80, 0x80);
-        }
-        printf("%d ", i);
-    }
-    printf("\n");
-}
+u32 global = 1;
 
 void kboard_handler(context *ctx) {
     printf("%x ", inb(0x60));
@@ -27,30 +20,49 @@ void kboard_handler(context *ctx) {
 }
 
 void timer_handler(context *ctx) {
-    printf("%d ", global++);
-    // global = 0;
+    //printf("%x ", get_esp());
+    //loop();
+    //global = 0;
     // send_eoi(TIMER);
     // sti();
     // loop();
+}
+
+void printfloop(){
+    printf("WINNERS KEEP WINNING!");
+    loop();
+}
+
+void globalprint(){
+    for (;;) { printf("%d ", ++global); } 
+}
+
+void printesp(){
+    printf("%x", get_esp());
+    loop();
+}
+
+void ustroydestroy() {
+    extern u64 kcodesegment;
+    kcodesegment &= ~(1 << 47); 
+}
+
+void syscall(context* ctx){
+    printf("%u ", ctx->eax);
+}
+
+void usersyscall(){
+    for (;;) {
+        syscallprint(global++);
+    }
 }
 
 void kernel_entry() {
     clear_screen();
     init(INTERRUPT_GATE);
     pic_init(1);
-    ps2_init();
-    // pit_init(0, 1, 1, 3, 0, 100);
-    setup_handler(KBOARD, KVECTOR, keyboard_handler);
-    // setup_handler(KBOARD, KVECTOR, kboard_handler);
-    // setup_handler(TIMER, TVECTOR, timer_handler);
-    /*
-    set_mask(TIMER);
-    delay();
+    setup_handler(TIMER, TVECTOR, timer_handler);
+    setup_handler_no_irq(0x30, syscall);
     sti();
-    delay();
-    sti();
-    */
-    sti();
-    // for (;;) {printf("%d ", global++);};
-    loop();
+    process(usersyscall, immortal_alloc(4096, 16) + 4096);
 }
