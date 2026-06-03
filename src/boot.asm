@@ -38,7 +38,6 @@ read_payload:
     cmp ch, 80 ; max cyl
     jae err
 
-
 lgdt [gdt_descriptor]
 cld
 
@@ -57,6 +56,14 @@ next:
     mov fs, eax
     mov gs, eax
 
+mov eax, TSS
+mov [tssseg + 2], ax
+shr eax, 16
+mov [tssseg + 4], al
+mov [tssseg + 7], ah
+mov ax, 0x28
+ltr ax
+
 [EXTERN kernel_entry]
 call kernel_entry
 
@@ -64,6 +71,92 @@ call kernel_entry
 [GLOBAL loop]
 loop:
     jmp loop
+
+[GLOBAL outb]
+outb:
+    mov dx, [esp+4] 
+    mov al, [esp+8] 
+    out dx, al
+    ret
+
+[GLOBAL inb]
+inb:
+    mov dx, [esp+4]
+    in al, dx
+    ret
+
+[GLOBAL cli]
+cli:
+    cli
+    ret
+
+[GLOBAL sti]
+sti:
+    sti
+    ret
+
+[GLOBAL get_eflags]
+get_eflags:
+    pushfd
+    pop eax
+    ret
+
+[GLOBAL restore_ctx]
+restore_ctx:
+    mov esp, [esp + 4]
+    popa
+    pop gs
+    pop fs
+    pop es
+    pop ds
+    add esp, 8
+    iret
+
+[GLOBAL lidt]
+lidt:
+    mov eax, [esp + 4]
+    lidt [eax]
+    ret
+
+[GLOBAL get_esp]
+get_esp:
+    mov eax, esp
+    ret
+
+[GLOBAL syscallprint]
+syscallprint:
+    mov eax, [esp + 4]
+    int 0x30
+    ret
+
+[EXTERN universal_handler]
+[GLOBAL collect_context]
+collect_context:
+    push ds
+    push es
+    push fs
+    push gs
+    pusha
+    cld
+    mov eax, DATA
+    mov ds, eax
+    mov es, eax
+    mov fs, eax
+    mov gs, eax
+    mov ebx, esp
+    and esp, -16
+    sub esp, 12 
+    push ebx
+    call universal_handler
+    mov esp, ebx
+    popa
+    pop gs
+    pop fs
+    pop es
+    pop ds
+    add esp, 8 
+    iretd
+
 
 [BITS 16]
 cont:
@@ -83,14 +176,25 @@ err:
 
 
 gdt_descriptor:
-    dw 0x17
+    dw 0x2f
     dd gdt
 
+global kcodeseg
 align 8
 gdt:
     .null:  dq 0
-    codeseg:    dd 0x0000FFFF, 0b0000_0000_1100_1111_1001_1010_0000_0000
-    dataseg:    dd 0x0000FFFF, 0b0000_0000_1100_1111_1001_0010_0000_0000
+    kcodeseg:    dd 0x0000FFFF, 0b0000_0000_1100_1111_1001_1010_0000_0000
+    kdataseg:    dd 0x0000FFFF, 0b0000_0000_1100_1111_1001_0010_0000_0000
+    ucodeseg:    dd 0x0000FFFF, 0b0000_0000_1100_1111_1111_1010_0000_0000
+    udataseg:    dd 0x0000FFFF, 0b0000_0000_1100_1111_1111_0010_0000_0000
+
+    tssseg:      dd 0x0000006B, 0b0000_0000_0000_0000_1000_1001_0000_0000
+
+TSS:
+    prevTSS: dd 0
+    esp0: dd 0x7C00
+    ss0: db DATA
+    times 12 dq 0
 
 CODE equ 0x8
 DATA equ 0x10
